@@ -1,5 +1,5 @@
 #!/bin/sh
-# 98-natxo-daemon v2: API root + telnet, IDEMPOTENTE (no relanza si ya corre)
+# 98-natxo-daemon v2: root API + telnet, IDEMPOTENT (does not relaunch if already running)
 for p in $(ls /proc | grep -E '^[0-9]+$'); do
   c=$(cat /proc/$p/cmdline 2>/dev/null | tr '\0' ' ')
   case "$c" in

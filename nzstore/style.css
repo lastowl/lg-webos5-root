@@ -60,7 +60,7 @@ select:focus, input:focus { outline: 3px solid #cf0652; }
   text-align: center; cursor: pointer; border: 3px solid transparent;
 }
 .card:focus { outline: none; border-color: #cf0652; box-shadow: 0 0 18px rgba(207,6,82,.55); }
-/* NUNCA transform en :focus, el Chromium 68 crea capas de composición y el scroll deja trozos sin pintar */
+/* NEVER use transform on :focus: Chromium 68 creates compositing layers and the scroll leaves unpainted patches */
 .card img { width: 108px; height: 108px; border-radius: 14px; background: #2c2c38; }
 .card .name { font-size: 19px; margin-top: 8px; height: 50px; overflow: hidden; }
 .card .badge { font-size: 16px; color: #58d68d; font-weight: 600; }
@@ -92,7 +92,7 @@ select:focus, input:focus { outline: 3px solid #cf0652; }
   position: fixed; inset: 0; background: rgba(0,0,0,.72);
   display: flex; align-items: center; justify-content: center; z-index: 100;
 }
-/* display:flex pisa [hidden] del navegador, sin esto el modal vive siempre */
+/* display:flex overrides the browser [hidden]; without this the modal never hides */
 .modal[hidden] { display: none !important; }
 .modal-box {
   background: #202028; border-radius: 18px; padding: 30px;

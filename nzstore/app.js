@@ -146,7 +146,7 @@ var BASE_REPOS = [
 ];
 var REPOS = BASE_REPOS.slice();
 
-// Repos propios del usuario (persisten en localStorage)
+// User custom repos (persisted in localStorage)
 function loadCustomRepos() {
   try {
     var raw = localStorage.getItem('nz-repos');
@@ -158,7 +158,7 @@ function saveCustomRepos() {
   try { localStorage.setItem('nz-repos', JSON.stringify(REPOS.slice(BASE_REPOS.length))); } catch (e) {}
 }
 
-// Destacados curados por NatxoBSD (por palabras clave del título)
+// Featured curated by NatxoBSD (by title keywords)
 var FEATURED = ['kodi', 'jellyfin', 'immich', 'moonlight', 'retroarch', 'vnc', 'youtube', 'hyperion', 'piccap', 'pinball'];
 
 var TOGGLES = [
@@ -171,17 +171,17 @@ var TOGGLES = [
 
 function $(id) { return document.getElementById(id); }
 
-// Setter seguro: un id inexistente nunca debe tumbar la app entera
+// Safe setter: a missing id must never crash the whole app
 function setTxt(id, txt) { var el = $(id); if (el) el.textContent = txt; }
 
-// Focus + scroll: en el webview de la TV el foco NO scrollea solo (las cards de arriba "desaparecían")
+// Focus + scroll: on the TV webview focus does NOT auto-scroll (top cards would "disappear")
 function focusEl(el) {
   if (!el) return;
   el.focus();
   try { el.scrollIntoView({ block: 'nearest', inline: 'nearest' }); } catch (e) {}
 }
 
-// Estado de instalación amigable (el JSON crudo de LG asusta: "verified": false ≠ error)
+// Friendly install status (raw LG JSON scares users: "verified": false != error)
 function friendlyStatus(raw) {
   raw = raw || '';
   if (/install failed|"reason"/.test(raw)) return '⚠ ' + t('st_failed');
@@ -196,7 +196,7 @@ function fmtSize(b) {
   return b < 1048576 ? Math.round(b / 1024) + ' KB' : Math.round(b / 1048576) + ' MB';
 }
 
-// Deja rastro de cualquier error JS en la TV (/tmp/nzstore-js.log), para depurar en remoto
+// Leave a trace of any JS error on the TV (/tmp/nzstore-js.log) for remote debugging
 window.onerror = function (msg, src, line) {
   try {
     var safe = String(msg).replace(/["'\\]/g, '_');
@@ -247,7 +247,7 @@ function applyLang() {
   if (state.tab === 'control') renderToggles();
 }
 
-/* ---------- conexión ---------- */
+/* ---------- connection ---------- */
 function checkConn() {
   api('GET', '/status').then(function (s) {
     var c = $('conn');
@@ -260,7 +260,7 @@ function checkConn() {
   });
 }
 
-/* ---------- catálogo ---------- */
+/* ---------- catalog ---------- */
 function loadRepos() {
   var sel = $('repo-sel');
   renderRepoSel();
@@ -292,7 +292,7 @@ function loadRepos() {
   sel.onchange = renderAll;
 }
 
-// El selector se retraduce al cambiar de idioma (conserva la selección)
+// The selector re-translates on language change (keeps the selection)
 function renderRepoSel() {
   var sel = $('repo-sel');
   var keep = sel.value || 'all';
@@ -380,7 +380,7 @@ function installCurrent() {
   if (!p) return;
   var m = p.manifest || {};
   if (m.ipkUrl) { doInstall(p, resolveIpUrl(m, p)); return; }
-  // repo tipo kieranbrown: SOLO manifestUrl (sin manifest inline) → cargarlo ahora
+  // kieranbrown-style repo: manifestUrl ONLY (no inline manifest) -> fetch it now
   if (!p.manifestUrl) { $('m-log').textContent = t('no_ipk'); return; }
   $('m-log').textContent = t('downloading');
   fetch(p.manifestUrl).then(function (r) { return r.json(); }).then(function (mm) {
@@ -450,7 +450,7 @@ function addRepo() {
   var u = ($('r-url').value || '').trim();
   if (!/^https?:\/\//.test(u)) { toast(t('bad_url')); return; }
   if (REPOS.some(function (r) { return r.url === u; })) { toast(t('exists')); return; }
-  // valida de verdad: tiene que devolver JSON con packages[]
+  // real validation: it must return JSON with packages[]
   fetch(u).then(function (r) { return r.json(); }).then(function (data) {
     if (!data || !data.packages || !data.packages.length) { toast(t('bad_url')); return; }
     var repo = { id: 'c' + Date.now(), name: u.split('/')[2] || u, url: u };
@@ -484,7 +484,7 @@ function renderToggles() {
     Array.prototype.slice.call(document.querySelectorAll('.toggle')).forEach(function (el) {
       el.addEventListener('click', function () { flipToggle(el.dataset.toggle); });
     });
-    // no robar el foco si está en las pestañas (navegación ←→); si no, volver al toggle recordado
+    // do not steal focus while on the tabs (left/right navigation); otherwise back to the remembered toggle
     var aeNow = document.activeElement;
     if (aeNow !== $('tab-apps') && aeNow !== $('tab-control')) {
       var list = Array.prototype.slice.call(document.querySelectorAll('.toggle'));
@@ -533,13 +533,13 @@ document.addEventListener('keydown', function (e) {
     else if (e.keyCode === 39) { $('m-close').focus(); e.preventDefault(); }
     return;
   }
-  // BACK global: cerrar modal repo → volver a Apps → (en Apps) salir de la app (estándar TV)
+  // Global BACK: close repo modal -> back to Apps -> (on Apps) leave the app (TV standard)
   if (e.keyCode === 461) {
     if (!$('modal-repo').hidden) { closeRepoModal(); e.preventDefault(); }
     else if (state.tab === 'control') { setTab('apps'); focusEl($('tab-apps')); e.preventDefault(); }
     return;
   }
-  if (e.keyCode === 13) { // OK del mando
+  if (e.keyCode === 13) { // remote OK
     var ae = document.activeElement;
     if (ae && ae.classList && ae.classList.contains('card')) { openDetail(parseInt(ae.dataset.idx, 10)); e.preventDefault(); }
     else if (ae && ae.classList && ae.classList.contains('toggle')) { flipToggle(ae.dataset.toggle); e.preventDefault(); }

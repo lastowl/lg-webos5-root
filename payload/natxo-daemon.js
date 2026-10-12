@@ -1,5 +1,5 @@
 #!/usr/bin/node
-// NATXO daemon v2: API root local (127.0.0.1) + telnet con clave + instalador de apps + toggles NZ Store
+// NATXO daemon v2: local root API (127.0.0.1) + password telnet + app installer + NZ Store toggles
 const http = require('http'), net = require('net'), fs = require('fs'), cp = require('child_process');
 const BASE = '/media/developer/natxo';
 const TOKEN = (fs.readFileSync(BASE + '/daemon/token', 'utf8') || '').trim();
@@ -13,7 +13,7 @@ function state(){ try { return JSON.parse(fs.readFileSync(STATE, 'utf8')); } cat
 function saveState(s){ fs.writeFileSync(STATE, JSON.stringify(s)); }
 function sh(cmd, t){ return new Promise(r => cp.exec(cmd, {timeout: t || 20000}, (e, o, e2) => r((o || e2 || '').toString()))); }
 
-// ---------- IPK = archive 'ar' → saca data.tar.gz (sin binario ar en la TV) ----------
+// ---------- IPK = 'ar' archive -> extract data.tar.gz (no ar binary on the TV) ----------
 function extractIpkData(buf){
   if (!buf || buf.length < 8 || buf.slice(0, 8).toString() !== '!<arch>\n') return null;
   let off = 8;
@@ -38,7 +38,7 @@ function extractIpkData(buf){
 }
 
 // ---------- TOGGLES (NZ Store) ----------
-// eco: categoría eco → 8 claves on/off (receta eco_off.js). tracking: option/livePlus.
+// eco: eco category -> 8 on/off keys. tracking: option/livePlus.
 const ECO_KEYS = ['autoPowerOff','noSignalAutoOff','noSignalScreenSaver','noActivityPowerOffHours','autoPowerOff2Hour','autoPowerOff2HourMute','enSleepTimer','sleepTimer'];
 function ecoSettings(v){ const s = {}; ECO_KEYS.forEach(k => s[k] = v); return JSON.stringify({category:'eco', settings:s}); }
 
@@ -63,8 +63,8 @@ async function getToggle(name){
 }
 
 // ---------- DEVMODE ∞ (extend time) ----------
-// devkey.js: restante = valor_fichero − (ahora − mtime). Escribir devSessionTime
-// resetea valor+mtime a la vez → la sesión del Dev Mode nunca caduca.
+// devkey.js: remaining = file value - (now - mtime). Writing devSessionTime
+// resets value+mtime at once, so the Dev Mode session never expires.
 let devextTimer = null;
 const DEVSESSION_PATHS = [
   '/proc/1/root/media/cryptofs/apps/usr/palm/services/com.palmdts.devmode.service/devSessionTime',
@@ -111,7 +111,7 @@ async function setToggle(name, on){
   return { name, value: 'unknown', error: 'toggle desconocido' };
 }
 
-// ---------- TELNET (solo si activado) ----------
+// ---------- TELNET (only when enabled) ----------
 let telnetSrv = null;
 function startTelnet(){
   if (telnetSrv) return true;
@@ -190,8 +190,8 @@ const srv = http.createServer((req, res) => {
   } else if (req.method === 'GET' && url === '/app/log') {
     sh(`tail -12 ${NZLOG}`, 10000).then(out => json(res, 200, {ok: true, log: out}));
   } else if (req.method === 'POST' && url === '/app/install') {
-    // INSTALACIÓN REGISTRADA (dev/install con suscripción viva) → icono en launcher.
-    // 1) descargar ipk  2) chmod 644  3) luna-send keep-alive  (receta certificada 2026-10-11)
+    // REGISTERED INSTALL (dev/install with live subscription) -> launcher icon.
+    // 1) download ipk  2) chmod 644  3) luna-send keep-alive  (proven recipe 2026-10-11)
     let body = '';
     req.on('data', d => body += d);
     req.on('end', async () => {
@@ -204,7 +204,7 @@ const srv = http.createServer((req, res) => {
         const dl = await sh(`wget -q -O '${dest}' '${u.replace(/'/g, '')}' && chmod 644 '${dest}' && wc -c < '${dest}'`, 300000);
         const size = parseInt((dl || '').trim(), 10);
         if (!size) { log('app/install descarga fallida ' + u); json(res, 200, {ok: false, error: 'descarga fallida'}); return; }
-        // payload JSON en FICHERO: los shells anidados se comían las comillas ("lexical error in json text")
+        // JSON payload in a FILE: nested shells ate the quotes ("lexical error in json text")
         fs.writeFileSync('/tmp/nzp.json', JSON.stringify({id: 'testing', ipkUrl: dest, subscribe: true}));
         cp.exec(`setsid sh -c 'luna-send -n 30 -f luna://com.webos.appInstallService/dev/install "$(cat /tmp/nzp.json)" > ${NZLOG} 2>&1 < /dev/null' >/dev/null 2>&1 &`, {timeout: 3000});
         log('app/install lanzado ' + fname + ' (' + size + ' bytes)');
@@ -217,14 +217,14 @@ const srv = http.createServer((req, res) => {
     if (on) startTelnet(); else stopTelnet();
     json(res, 200, {telnet: on});
   } else if (req.method === 'POST' && url === '/install') {
-    // INSTALACIÓN POR ROOT: parsea el .ipk (ar) aquí mismo y descomprime en el dir de apps.
+    // ROOT INSTALL: parses the .ipk (ar) in place and extracts into the apps dir.
     let body = '';
     req.on('data', d => body += d);
     req.on('end', () => {
       try {
         const o = JSON.parse(body);
         const ipk = o.ipk || '';
-        if (!ipk) { json(res, 200, {ok: false, error: 'ipk requerido (ruta en la TV, ej: /tmp/app.ipk)'}); return; }
+        if (!ipk) { json(res, 200, {ok: false, error: 'ipk required (path on the TV, e.g. /tmp/app.ipk)'}); return; }
         if (!fs.existsSync(ipk)) { json(res, 200, {ok: false, error: 'no existe: ' + ipk}); return; }
         const data = extractIpkData(fs.readFileSync(ipk));
         if (!data) { json(res, 200, {ok: false, error: 'no es un .ipk valido (sin data.tar dentro)'}); return; }

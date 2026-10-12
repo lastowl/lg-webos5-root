@@ -1,5 +1,5 @@
 #!/bin/sh
-# 99-suidtest: registra en qué contexto corre el startup.sh y si el SUID eleva
+# 99-suidtest: logs which context startup.sh runs in and whether the SUID elevates
 LOG=/media/developer/natxo/boot.log
 {
   echo "=== BOOT $(date) ==="
