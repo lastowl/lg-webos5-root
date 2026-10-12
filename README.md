@@ -55,7 +55,10 @@ devmode.sh (NAND, RO)
 - **NZ Store** (`com.natxobsd.nzstore`), a lightweight homebrew store (plain HTML/JS, zero
   frameworks): webosbrew catalog + custom repos (add your own), remote-control navigation,
   6 languages, and a Control tab with quick system toggles (eco, LG tracking, SSH, Telnet,
-  and **Dev Mode ∞**: keeps the developer session counter topped up so Dev Mode never expires).
+  and **Dev Mode ∞**: keeps the developer session counter topped up so Dev Mode never expires)
+  plus a **screen capture panel** (now / 10s / 20s at 4K, see `screen-capture/`).
+- **Screen capture at 4K** (3840x2160): LG disables it per model, this kit re-enables it
+  without touching anything signed. Scripts, boot persistence and docs in `screen-capture/`.
 - Apps can also be installed anytime from SSH:
   `curl -H "X-Natxo-Token: $TOKEN" -d '{"ipk":"/tmp/app.ipk"}' http://127.0.0.1:7777/install`
 - The token is created at install time and printed to `install.log`.
@@ -96,6 +99,8 @@ rooted. Full details and the removal steps: `LG-CX-ROOT-EN.md` / `LG-CX-ROOT-ES.
   shim, daemon. Drop `payload/apps/*.ipk` (and list them in `payload/apps/manifest.txt`) to
   auto-install apps (e.g. the NZ Store).
 - `nzstore/`: NZ Store sources.
+- `screen-capture/`: 4K screen capture scripts (shot, timer, boot persistence) + UI panel
+  and the full recipe (`screen-capture/README.md`).
 - `scripts/boot-root.sh`: launches the init chain
 - `scripts/start.sh`: creates the PrivSep dir (`/var/run/sshd`), sets `LD_LIBRARY_PATH`,
   starts the OpenSSH server (process guard included), logs to `boot.log`
