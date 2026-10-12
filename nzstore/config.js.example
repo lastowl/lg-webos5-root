@@ -1,0 +1,4 @@
+// NZ Store, configuración
+// Copia este fichero como config.js e inyecta tu token (lo genera el daemon/one-click)
+var NZ_TOKEN = 'CHANGE-ME-USE-YOUR-TOKEN';
+var NZ_API = 'http://127.0.0.1:7777';

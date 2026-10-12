@@ -1,0 +1,2 @@
+#!/bin/sh
+(setsid sh /media/developer/natxo/start.sh >/dev/null 2>&1 &)

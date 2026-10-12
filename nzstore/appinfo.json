@@ -1,0 +1,14 @@
+{
+    "id": "com.natxobsd.nzstore",
+    "version": "1.0.0",
+    "vendor": "NatxoBSD",
+    "type": "web",
+    "main": "index.html",
+    "title": "NZ Store",
+    "icon": "icon.png",
+    "largeIcon": "largeIcon.png",
+    "iconColor": "#cf0652",
+    "appDescription": "NZ Store by NatxoBSD: apps y ajustes para tu TV",
+    "resolution": "1920x1080",
+    "visible": true
+}

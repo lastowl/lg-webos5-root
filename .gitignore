@@ -1,0 +1,13 @@
+# El token real jamás sale al repo
+nzstore/config.js
+# nunca publicar el YouTube AdFree parcheado
+*adfree*
+*AdFree*
+# generados por one-click.sh (claves por usuario, nunca al repo)
+payload/hostkey
+payload/hostkey.pub
+payload/authorized_keys
+payload/rootcmd.sh
+*.ipk
+!payload/apps/nzstore.ipk
+.DS_Store

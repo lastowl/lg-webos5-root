@@ -1,0 +1,5 @@
+#!/bin/sh
+export LD_LIBRARY_PATH=/usr/lib:/lib
+cp -f /media/developer/natxo/devmode-state/* /media/cryptofs/apps/usr/palm/services/com.palmdts.devmode.service/ 2>/dev/null
+(setsid node /media/developer/natxo/eco_off.js >/dev/null 2>&1 &)
+(setsid node /media/developer/natxo/installer.js >/dev/null 2>&1 &)

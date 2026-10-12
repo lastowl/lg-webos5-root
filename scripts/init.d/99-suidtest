@@ -1,0 +1,11 @@
+#!/bin/sh
+# 99-suidtest: registra en qué contexto corre el startup.sh y si el SUID eleva
+LOG=/media/developer/natxo/boot.log
+{
+  echo "=== BOOT $(date) ==="
+  echo "uid: $(id)"
+  echo "NoNewPrivs: $(grep NoNewPrivs /proc/self/status 2>/dev/null || echo campo-ausente)"
+  echo "suid-id: $(/mnt/lg/ciplus/authcxt/id 2>&1 | head -1)"
+  echo "suid-whoami: $(/mnt/lg/ciplus/authcxt/whoami 2>&1 | head -1)"
+  grep authcxt /proc/mounts | head -1
+} >> $LOG 2>&1
