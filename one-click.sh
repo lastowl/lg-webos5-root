@@ -56,10 +56,10 @@ fi
 # a bare ssh-keygen here prompts silently and people ended up typing it twice.
 PASS=""
 if ! ssh-keygen -y -P "" -f "$KEY" > payload/authorized_keys 2>/dev/null; then
-  read -r -s -p "Key passphrase (the one you set in the Developer Mode app): " PASS
+  read -r -s -p "Passphrase (the 6 characters shown in the Developer Mode app): " PASS
   echo
   ssh-keygen -y -P "$PASS" -f "$KEY" > payload/authorized_keys 2>/dev/null || {
-    echo "ERROR: wrong passphrase (it is the one you set in the Developer Mode app)."
+    echo "ERROR: wrong passphrase (it is the 6 characters shown in the Developer Mode app)."
     exit 1
   }
 fi
