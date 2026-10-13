@@ -51,10 +51,18 @@ if [ ! -s "$KEY" ]; then
     exit 1; }
   chmod 600 "$KEY"
 fi
-# derive the pubkey, it becomes root's authorized_keys
-ssh-keygen -y -f "$KEY" > payload/authorized_keys 2>/dev/null || true
-read -r -s -p "Key passphrase (the one you set in the Developer Mode app): " PASS
-echo
+# derive the pubkey, it becomes root's authorized_keys.
+# ask for the passphrase ONLY if the key actually needs one, and feed it with -P:
+# a bare ssh-keygen here prompts silently and people ended up typing it twice.
+PASS=""
+if ! ssh-keygen -y -P "" -f "$KEY" > payload/authorized_keys 2>/dev/null; then
+  read -r -s -p "Key passphrase (the one you set in the Developer Mode app): " PASS
+  echo
+  ssh-keygen -y -P "$PASS" -f "$KEY" > payload/authorized_keys 2>/dev/null || {
+    echo "ERROR: wrong passphrase (it is the one you set in the Developer Mode app)."
+    exit 1
+  }
+fi
 
 # ---- 2b. sshd hostkey (the TV has NO ssh-keygen: PEM required) ----
 echo "-> Generating hostkey (RSA 2048, PEM format)..."
