@@ -15,9 +15,27 @@ root SSH (`:22`) comes up **by itself in ~75 seconds on every boot**, no compute
 
 | Model / firmware | Status |
 |---|---|
-| **LG CX** (OLED*CX*LA, webOS 5.6.2, fw 04.64.00) | ✅ certified (tested end-to-end, survives reboots) |
-| Other **webOS 5.x** panels (C6–C9 series and friends) | ⚠️ **likely**: the root chain is model-independent and the exploit self-calibrates (it checks C9..C6 kernel images), but only the CX has a validated live-root result so far. Untested, reports and PRs welcome. |
+| **LG CX** (OLED\*CX\*LA, webOS 5.6.2, fw 04.64.00) | ✅ certified (tested end-to-end, survives reboots) |
+| **LG NANO95** (55NANO956NA, webOS 5.6.2, fw 04.64.00, machine e60) | ✅ tested (requires dynamic MMIO skip, see below) |
+| Other **webOS 5.x** panels (C6–C9 series and friends) | ⚠️ **likely**: the root chain is model-independent and the exploit self-calibrates. Reports and PRs welcome. |
 | webOS 6+ | ❌ untested (Dev Mode internals differ) |
+
+### Dynamic MMIO skip (multi-model support)
+
+The original exploit scanned the full physical memory range between the GPU carveout and
+the top of RAM. On the CX this works because that range is entirely System RAM. On other
+SoCs (e.g. the NANO95's E60 platform) parts of that range are GPU MMIO or device registers
+that **kernel-panic** when read through the GFX mapping.
+
+The exploit now reads `/proc/iomem` at startup to discover which regions are actual System
+RAM and automatically skips everything else. This makes the scan safe on any SoC layout:
+
+- **CX (M16P):** entire scan range is RAM → no skip needed, behavior unchanged.
+- **NANO95 (E60):** `0xBA000000–0xFFFFFFFF` is MMIO → automatically skipped.
+- **Other models:** skip ranges are derived at runtime; no hardcoded addresses.
+
+If `/proc/iomem` is unreadable the exploit falls back to an empty skip list, preserving
+the original behavior.
 
 ## What it does
 The TV's own Dev Mode boot chain runs `devmode-helper.js` **as root on every boot**. This kit
