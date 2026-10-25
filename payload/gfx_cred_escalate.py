@@ -5,10 +5,10 @@
 #  Published here with full credit; the permanent-root chain around it
 #  (shim + init chain + daemon + NZ Store) is by Natxo (2026-10).
 #
-#  DYNAMIC MMIO SKIP: auto-detects non-RAM regions from /proc/iomem so the
-#  scan is safe on any SoC (CX, NANO95/E60, and others). On the CX the
-#  entire scan range is RAM and no skip is needed; on the NANO95 the
-#  0xBA000000-0x100000000 region contains MMIO that kernel-panics if read.
+#  DYNAMIC MMIO SKIP: auto-detects non-RAM regions so the scan is safe on
+#  any SoC (CX, NANO95/E60, and others). Uses /proc/iomem when addresses
+#  are available (root), otherwise probes one page per chunk boundary via
+#  GFX to discover unreadable regions before the full scan.
 # ============================================================================
 # GFX-only privilege escalation, self-calibrating and confined to physical
 # addresses at or above the GFX BASE floor. No kernel image, no per-model
@@ -217,22 +217,75 @@ def parse_mem_stat():
     except Exception:
         return None, None
 
+def _probe_chunk(phys):
+    """Fork a child that tries to read one page at phys via GFX.
+    Returns True if readable, False if SIGBUS/fail."""
+    r, w = os.pipe()
+    pid = os.fork()
+    if pid == 0:
+        os.close(r)
+        libc.prctl(PR_SET_NAME, b"gfxprobe", 0, 0, 0)
+        a, span, fd = gfx_map(phys, 0x1000, PROT_READ)
+        if a is None:
+            os._exit(1)
+        try:
+            ctypes.string_at(a, 64)
+        except Exception:
+            os._exit(2)
+        libc.munmap(ctypes.c_void_p(a), span)
+        os.close(fd)
+        os._exit(0)
+    os.close(w)
+    try:
+        _, status = read_child_output(pid, r, 64, 5)
+    except RuntimeError:
+        try:
+            os.kill(pid, signal.SIGKILL)
+            os.waitpid(pid, 0)
+        except Exception:
+            pass
+        return False
+    if os.WIFEXITED(status) and os.WEXITSTATUS(status) == 0:
+        return True
+    return False
+
+def _probe_skip_ranges(scan_lo, scan_hi):
+    """Build skip ranges by probing one page per CHUNK boundary."""
+    log("iomem: probing %d chunk boundaries for MMIO regions..." %
+        (((scan_hi - scan_lo) + CHUNK - 1) // CHUNK))
+    skips = []
+    skip_start = None
+    off = scan_lo
+    while off < scan_hi:
+        ok = _probe_chunk(off)
+        if not ok:
+            if skip_start is None:
+                skip_start = off
+        else:
+            if skip_start is not None:
+                skips.append((skip_start, off))
+                skip_start = None
+        off += CHUNK
+    if skip_start is not None:
+        skips.append((skip_start, scan_hi))
+    return skips
+
 def detect_mmio_skip_ranges(scan_lo, scan_hi):
-    """Build SKIP_RANGES dynamically from /proc/iomem.
+    """Build SKIP_RANGES from /proc/iomem, with probe-based fallback.
 
     Parses /proc/iomem to find all top-level regions in [scan_lo, scan_hi)
-    that are NOT "System RAM". These are MMIO/device register regions that
-    will kernel-panic if mapped and read via /dev/lg/gfx0.
-
-    Falls back to an empty list if /proc/iomem is unreadable (preserving
-    original CX behavior where the entire range is safe RAM).
+    that are NOT "System RAM". On kernels that zero addresses for non-root
+    (common on webOS), falls back to probing one page per chunk boundary
+    via the GFX device to discover unreadable regions before the full scan.
     """
     try:
         lines = open("/proc/iomem").readlines()
     except Exception:
-        log("iomem: cannot read /proc/iomem, no MMIO skip (safe on CX)")
-        return []
+        log("iomem: cannot read /proc/iomem, falling back to probe")
+        return _probe_skip_ranges(scan_lo, scan_hi)
 
+    # Check whether addresses are zeroed (non-root on most kernels)
+    addrs_zeroed = True
     ram_regions = []
     for line in lines:
         if line[0] in (' ', '\t'):
@@ -243,9 +296,15 @@ def detect_mmio_skip_ranges(scan_lo, scan_hi):
         lo = int(m.group(1), 16)
         hi = int(m.group(2), 16) + 1
         label = m.group(3).strip()
+        if lo != 0 or hi != 1:
+            addrs_zeroed = False
         if lo >= scan_hi or hi <= scan_lo:
             continue
         ram_regions.append((lo, hi, label))
+
+    if addrs_zeroed:
+        log("iomem: addresses zeroed (non-root), falling back to probe")
+        return _probe_skip_ranges(scan_lo, scan_hi)
 
     if not ram_regions:
         log("iomem: no regions overlap scan range, no MMIO skip")

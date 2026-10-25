@@ -27,15 +27,21 @@ the top of RAM. On the CX this works because that range is entirely System RAM. 
 SoCs (e.g. the NANO95's E60 platform) parts of that range are GPU MMIO or device registers
 that **kernel-panic** when read through the GFX mapping.
 
-The exploit now reads `/proc/iomem` at startup to discover which regions are actual System
-RAM and automatically skips everything else. This makes the scan safe on any SoC layout:
+The exploit detects unsafe regions at startup using two methods:
+
+1. **`/proc/iomem` parsing** — when run as root (or on kernels that expose addresses to
+   non-root), the exploit reads `/proc/iomem` to find which regions are System RAM and
+   skips everything else.
+2. **Probe-based fallback** — most kernels (including webOS) zero `/proc/iomem` addresses
+   for non-root users. When this is detected, the exploit probes one page per 16 MB chunk
+   boundary via the GFX device to discover unreadable regions before the full scan. This
+   adds ~1 second of overhead but prevents kernel panics on MMIO regions.
+
+This makes the scan safe on any SoC layout:
 
 - **CX (M16P):** entire scan range is RAM → no skip needed, behavior unchanged.
 - **NANO95 (E60):** `0xBA000000–0xFFFFFFFF` is MMIO → automatically skipped.
 - **Other models:** skip ranges are derived at runtime; no hardcoded addresses.
-
-If `/proc/iomem` is unreadable the exploit falls back to an empty skip list, preserving
-the original behavior.
 
 ## What it does
 The TV's own Dev Mode boot chain runs `devmode-helper.js` **as root on every boot**. This kit
