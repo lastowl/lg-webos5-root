@@ -171,6 +171,13 @@ var TOGGLES = [
 
 function $(id) { return document.getElementById(id); }
 
+// Escape untrusted text (repo data) before putting it into innerHTML
+function esc(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
 // Safe setter: a missing id must never crash the whole app
 function setTxt(id, txt) { var el = $(id); if (el) el.textContent = txt; }
 
@@ -196,16 +203,9 @@ function fmtSize(b) {
   return b < 1048576 ? Math.round(b / 1024) + ' KB' : Math.round(b / 1048576) + ' MB';
 }
 
-// Leave a trace of any JS error on the TV (/tmp/nzstore-js.log) for remote debugging
+// Log JS errors locally. Never build shell commands from error text.
 window.onerror = function (msg, src, line) {
-  try {
-    var safe = String(msg).replace(/["'\\]/g, '_');
-    var xhr = new XMLHttpRequest();
-    xhr.open('POST', NZ_API + '/exec', true);
-    xhr.setRequestHeader('X-Natxo-Token', NZ_TOKEN);
-    xhr.setRequestHeader('Content-Type', 'application/json');
-    xhr.send(JSON.stringify({ cmd: 'echo "' + safe + ' @' + line + '" >> /tmp/nzstore-js.log' }));
-  } catch (e) {}
+  try { console.log('[nzstore] ' + msg + ' @' + src + ':' + line); } catch (e) {}
 };
 
 function api(method, path, body) {
@@ -297,15 +297,15 @@ function renderRepoSel() {
   var sel = $('repo-sel');
   var keep = sel.value || 'all';
   sel.innerHTML = '<option value="all">' + t('all_repos') + '</option>' +
-    REPOS.map(function (r) { return '<option value="' + r.id + '">' + r.name + '</option>'; }).join('');
+    REPOS.map(function (r) { return '<option value="' + esc(r.id) + '">' + esc(r.name) + '</option>'; }).join('');
   sel.value = keep;
 }
 
 function cardHtml(p, idx, installed) {
   var icon = (p.manifest && p.manifest.iconUri) || p.iconUri || '';
   return '<div class="card" tabindex="0" data-idx="' + idx + '">' +
-    '<img src="' + icon + '" alt="">' +
-    '<div class="name">' + (p.title || p.id) + '</div>' +
+    '<img src="' + esc(icon) + '" alt="">' +
+    '<div class="name">' + esc(p.title || p.id) + '</div>' +
     (installed ? '<div class="badge">' + t('installed_badge') + '</div>' : '') +
     '</div>';
 }
@@ -439,8 +439,8 @@ function renderRepoList() {
     return;
   }
   $('r-list').innerHTML = custom.map(function (r) {
-    return '<div class="r-item"><span>' + r.name + '</span>' +
-      '<button class="r-del" data-id="' + r.id + '" tabindex="0">' + t('del') + '</button></div>';
+    return '<div class="r-item"><span>' + esc(r.name) + '</span>' +
+      '<button class="r-del" data-id="' + esc(r.id) + '" tabindex="0">' + t('del') + '</button></div>';
   }).join('');
   Array.prototype.slice.call(document.querySelectorAll('.r-del')).forEach(function (b) {
     b.addEventListener('click', function () { removeRepo(b.dataset.id); });
@@ -448,7 +448,7 @@ function renderRepoList() {
 }
 function addRepo() {
   var u = ($('r-url').value || '').trim();
-  if (!/^https?:\/\//.test(u)) { toast(t('bad_url')); return; }
+  if (!/^https:\/\//i.test(u)) { toast(t('bad_url')); return; }
   if (REPOS.some(function (r) { return r.url === u; })) { toast(t('exists')); return; }
   // real validation: it must return JSON with packages[]
   fetch(u).then(function (r) { return r.json(); }).then(function (data) {
